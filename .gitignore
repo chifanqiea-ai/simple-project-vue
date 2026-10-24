@@ -1,0 +1,19 @@
+# 依赖（别人拿到项目后用 npm install 自己装，不传）
+node_modules
+
+# 打包产物（npm run build 生成的，可随时重新生成）
+dist
+dist-ssr
+
+# 测试产物
+coverage
+test-results
+playwright-report
+
+# 本地/编辑器配置文件
+*.local
+.DS_Store
+*.log
+.vscode/*
+!.vscode/extensions.json
+.idea
