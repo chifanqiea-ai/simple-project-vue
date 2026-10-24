@@ -1,11 +1,11 @@
-import { type ApiResponse, type ArticleData, type Article, type ArticlePayload } from '../types/Article'
+import { type ArticleData, type Article, type ArticlePayload } from '../types/Article'
 import { http } from '../utils/http'
 
-// ===== 后端真实返回格式（对照后端 ArticleController / Result.java）=====
-// 和本项目约定格式有三处不同：
-//   1. 成功标记 code 是 200（本项目约定 0）
-//   2. 列表字段叫 records（本项目约定 list）
-//   3. 分页信息平铺（本项目约定包在 pagination 对象里）
+// ===== 说明：业务 code 的判断已统一收编到 http.ts 的响应拦截器里 =====
+// 这里的函数拿到的已经是"信封里的业务数据"本身；
+// 业务失败 / HTTP 错误 / 网络错误都以"抛异常"的形式出现，由调用方 try/catch 接住
+
+// 后端分页接口的真实结构（MyBatis-Plus 风格，字段名和前端约定不同）
 interface BackendPage<T> {
   records: T[]
   total: number
@@ -14,67 +14,44 @@ interface BackendPage<T> {
   pages: number
 }
 
-interface BackendResult<T> {
-  code: number
-  msg: string
-  data: T
-}
-
-// 翻译层（适配器）：把后端格式翻译成本项目约定格式，
-// 之后 store / 页面 / 组件全部不用动；后端改格式也只改这里
-function toFrontend<T>(res: BackendResult<T>): ApiResponse<T> {
-  return { code: res.code === 200 ? 0 : res.code, msg: res.msg, data: res.data }
-}
-
-// ===== 查：分页列表。后端参数名是 pageNum（不是 page！），还支持按状态筛选、按标题模糊搜索 =====
+// ===== 查：分页列表。这里只做"形状翻译"（后端字段名 → 前端约定的字段名）=====
+// 后端参数名是 pageNum（不是 page！），还支持按状态筛选、按标题模糊搜索
 export async function requestArticleList(
   pageNum = 1,
   pageSize = 10,
   status?: string,
   keyword?: string,
-): Promise<ApiResponse<ArticleData>> {
-  const res = await http.get<unknown, BackendResult<BackendPage<Article>>>('/article/page', {
+): Promise<ArticleData> {
+  const page = await http.get<unknown, BackendPage<Article>>('/article/page', {
     params: { pageNum, pageSize, ...(status ? { status } : {}), ...(keyword ? { keyword } : {}) },
   })
 
-  // 业务出错时 data 是 null，直接读 records 会崩，这里给个安全的空值
-  if (res.code !== 200) {
-    return { code: res.code, msg: res.msg, data: { list: [], pagination: { total: 0, page: pageNum, pageSize } } }
-  }
-
   return {
-    ...toFrontend(res),
-    data: {
-      list: res.data.records,
-      pagination: {
-        total: res.data.total,
-        page: res.data.current,
-        pageSize: res.data.size,
-      },
+    list: page.records,
+    pagination: {
+      total: page.total,
+      page: page.current,
+      pageSize: page.size,
     },
   }
 }
 
 // ===== 查：单篇详情 =====
-export async function requestArticleDetail(id: number): Promise<ApiResponse<Article>> {
-  const res = await http.get<unknown, BackendResult<Article>>(`/article/${id}`)
-  return toFrontend(res)
+export async function requestArticleDetail(id: number): Promise<Article> {
+  return http.get<unknown, Article>(`/article/${id}`)
 }
 
 // ===== 增 =====
-export async function requestCreateArticle(payload: ArticlePayload): Promise<ApiResponse<null>> {
-  const res = await http.post<unknown, BackendResult<null>>('/article', payload)
-  return toFrontend(res)
+export async function requestCreateArticle(payload: ArticlePayload): Promise<null> {
+  return http.post<unknown, null>('/article', payload)
 }
 
 // ===== 改 =====
-export async function requestUpdateArticle(payload: ArticlePayload): Promise<ApiResponse<null>> {
-  const res = await http.put<unknown, BackendResult<null>>('/article', payload)
-  return toFrontend(res)
+export async function requestUpdateArticle(payload: ArticlePayload): Promise<null> {
+  return http.put<unknown, null>('/article', payload)
 }
 
 // ===== 删 =====
-export async function requestDeleteArticle(id: number): Promise<ApiResponse<null>> {
-  const res = await http.delete<unknown, BackendResult<null>>(`/article/${id}`)
-  return toFrontend(res)
+export async function requestDeleteArticle(id: number): Promise<null> {
+  return http.delete<unknown, null>(`/article/${id}`)
 }

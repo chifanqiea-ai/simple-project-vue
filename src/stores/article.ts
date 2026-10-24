@@ -16,6 +16,11 @@ import {
   requestDeleteArticle,
 } from '../api/article'
 
+// 把各种异常统一取成给人看的话（业务错误/HTTP 错误/网络错误都会被拦截器包成 Error）
+function errMsg(e: unknown): string {
+  return e instanceof Error ? e.message : String(e)
+}
+
 export const useArticleStore = defineStore('article', () => {
   // ===== state：相当于 Bean 的字段 =====
   const state = ref<RequestState<ArticleData>>({
@@ -58,78 +63,86 @@ export const useArticleStore = defineStore('article', () => {
   }
 
   // ===== actions：相当于 Bean 的业务方法。所有写操作都走这里，全部真调后端 =====
+  // 失败以"抛异常"出现（拦截器统一抛的），这里 try/catch 接住转成弹窗提示
   async function publish(id: number) {
     const article = articles.value.find((a) => a.id === id)
     if (!article) return
-    const res = await requestUpdateArticle(toPayload(article, 'published'))
-    if (res.code === 0) {
+    try {
+      await requestUpdateArticle(toPayload(article, 'published'))
       article.status = 'published'
-    } else {
-      alert('发布失败：' + res.msg)
+      alert('发布成功')
+    } catch (e) {
+      alert('发布失败：' + errMsg(e))
     }
   }
 
   async function draft(id: number) {
     const article = articles.value.find((a) => a.id === id)
     if (!article) return
-    const res = await requestUpdateArticle(toPayload(article, 'draft'))
-    if (res.code === 0) {
+    try {
+      await requestUpdateArticle(toPayload(article, 'draft'))
       article.status = 'draft'
-    } else {
-      alert('保存草稿失败：' + res.msg)
+      alert('已保存草稿')
+    } catch (e) {
+      alert('保存草稿失败：' + errMsg(e))
     }
   }
 
   /** 新增文章。成功返回 true（弹窗据此关闭），失败弹提示并返回 false */
   async function addArticle(payload: ArticlePayload): Promise<boolean> {
-    const res = await requestCreateArticle(payload)
-    if (res.code === 0) {
+    try {
+      await requestCreateArticle(payload)
       await loadArticles()
+      alert('新增成功')
       return true
+    } catch (e) {
+      alert('新增失败：' + errMsg(e))
+      return false
     }
-    alert('新增失败：' + res.msg)
-    return false
   }
 
   /** 修改文章。成功返回 true，失败弹提示并返回 false */
   async function editArticle(payload: ArticlePayload): Promise<boolean> {
-    const res = await requestUpdateArticle(payload)
-    if (res.code === 0) {
+    try {
+      await requestUpdateArticle(payload)
       await loadArticles()
+      alert('修改成功')
       return true
+    } catch (e) {
+      alert('修改失败：' + errMsg(e))
+      return false
     }
-    alert('修改失败：' + res.msg)
-    return false
   }
 
   async function removeArticle(id: number) {
-    const res = await requestDeleteArticle(id)
-    if (res.code === 0) {
+    try {
+      await requestDeleteArticle(id)
       await loadArticles()
-    } else {
-      alert('删除失败：' + res.msg)
+      alert('删除成功')
+    } catch (e) {
+      alert('删除失败：' + errMsg(e))
     }
   }
 
   async function loadArticles() {
     state.value = { status: 'loading' }
 
-    const res = await requestArticleList()
-    if (res.code === 0) {
-      state.value = { status: 'success', data: res.data }
-    } else {
-      state.value = { status: 'error', error: new Error(res.msg) }
+    try {
+      const data = await requestArticleList()
+      state.value = { status: 'success', data }
+    } catch (e) {
+      state.value = { status: 'error', error: e instanceof Error ? e : new Error(String(e)) }
     }
   }
 
   async function loadArticleDetail(id: number) {
     detailState.value = { status: 'loading' }
 
-    const res = await requestArticleDetail(id)
-    if (res.code === 0) {
-      detailState.value = { status: 'success', data: res.data }
-    } else {
-      detailState.value = { status: 'error', error: new Error(res.msg) }
+    try {
+      const data = await requestArticleDetail(id)
+      detailState.value = { status: 'success', data }
+    } catch (e) {
+      detailState.value = { status: 'error', error: e instanceof Error ? e : new Error(String(e)) }
     }
   }
 

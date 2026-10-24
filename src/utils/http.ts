@@ -21,16 +21,27 @@ http.interceptors.request.use((config: InternalAxiosRequestConfig) => {
 })
 
 // ===== 响应拦截器 ≈ 全局异常处理器 @RestControllerAdvice =====
-// 职责：统一拆包 + 把 HTTP 层错误归一化。注意只管「网络 + HTTP」两层，
-// 业务 code!==0 那层留给 useRequest（E1）—— 分层，别在一个拦截器里全干了
+// 职责：拆包 + 统一处理业务 code + 把 HTTP 层错误归一化。
+// （原课程设计是"业务 code 留给调用方分层处理"，这里改为在拦截器统一收编：
+//   成功 → 直接给调用方业务数据；业务失败 → 抛异常，调用方 try/catch 接住）
 http.interceptors.response.use(
   // ① HTTP 2xx 走这里（哪怕业务 code 是 500 也走这里！）
-  // 这里 return response.data 就是「拆包」。axios 的类型认为拦截器必须原样返回
-  // AxiosResponse，所以拆包本质上是个类型谎 —— 官方给的逃生口：
-  // 每个请求方法的**第二个泛型 R** 允许你声明「经过拦截器后实际返回什么类型」，
-  // 调用处用它把类型修正回来（见 E2Demo.vue 的用法），这里参数故意不写类型标注
+  // 统一拆两层信封：
+  //   第一层 axios 的 AxiosResponse → response.data 是后端的 {code, msg, data}
+  //   第二层业务信封 → code 成功就返回 data（纯业务数据），失败就抛异常
+  // axios 的类型认为拦截器必须原样返回 AxiosResponse，所以拆包本质上是个类型谎
+  // —— 官方给的逃生口：每个请求方法的**第二个泛型 R** 允许你声明
+  // 「经过拦截器后实际返回什么类型」，调用处用它把类型修正回来
   (response) => {
-    return response.data // axios 壳拆掉，返回 ApiResponse 本体
+    const body = response.data
+    if (body && typeof body === 'object' && typeof body.code === 'number') {
+      // 模拟数据用 code 0，真实后端用 code 200，两个都算成功
+      if (body.code === 200 || body.code === 0) {
+        return body.data // 信封拆到底，调用方拿到的就是业务数据
+      }
+      return Promise.reject(new Error(body.msg || '业务处理失败'))
+    }
+    return Promise.reject(new Error('接口返回格式异常，无法解析'))
   },
 
   // ② HTTP 非 2xx / 网络错误 / 超时 走这里
