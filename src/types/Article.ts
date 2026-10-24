@@ -44,6 +44,17 @@ export type RequestState<T> =
 
 export type ArticleResponse = ApiResponse<ArticleData>
 
+/** 新增/修改文章时提交给后端的数据。新增不用带 id，修改必须带 id */
+export interface ArticlePayload {
+  id?: number
+  title: string
+  status: ArticleStatus
+  tags: string[]
+  author: { id?: number; name: string; avatar?: string }
+  stats?: Stats
+  publishedAt?: string | null
+}
+
 export function isNotNullObj(x: unknown): x is object {
   return x !== null && typeof x === 'object'
 }

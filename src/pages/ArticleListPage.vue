@@ -1,9 +1,11 @@
 <script setup lang="ts">
 import ArticleList from '../components/ArticleList.vue'
+import ArticleFormModal from '../components/ArticleFormModal.vue'
 import FilterBar from '../components/FilterBar.vue'
 import SearchBar from '../components/SearchBar.vue'
 
 import { computed, onMounted, ref } from 'vue'
+import type { Article } from '../types/Article'
 import { useArticleStore } from '../stores/article'
 import { storeToRefs } from 'pinia'
 
@@ -27,6 +29,32 @@ const visibleArticles = computed(() =>
   filteredArticles.value.filter((a) => a.title.includes(keyword.value)),
 )
 
+// 新增/编辑弹窗：null=关着；有文章=编辑它；新建用特殊标记区分
+const formVisible = ref(false)
+const editingArticle = ref<Article | null>(null)
+
+function openCreateForm() {
+  editingArticle.value = null
+  formVisible.value = true
+}
+
+function openEditForm(article: Article) {
+  editingArticle.value = article
+  formVisible.value = true
+}
+
+function closeForm() {
+  formVisible.value = false
+  editingArticle.value = null
+}
+
+function confirmRemove(article: Article) {
+  // 浏览器自带确认框：误点了还能反悔
+  if (confirm(`确定删除「${article.title}」吗？删除后不可恢复`)) {
+    articleStore.removeArticle(article.id)
+  }
+}
+
 onMounted(() => {
   loadArticles()
 })
@@ -43,8 +71,12 @@ onMounted(() => {
     </p>
 
     <template v-else>
+      <button @click="openCreateForm">新增文章</button>
       <FilterBar />
-      <ArticleList :articles="visibleArticles" />
+      <ArticleList :articles="visibleArticles" @edit="openEditForm" @remove="confirmRemove" />
     </template>
   </div>
+
+  <!-- 新增/编辑弹窗：保存成功后关掉（列表已在 store 里刷新） -->
+  <ArticleFormModal v-if="formVisible" :article="editingArticle" @close="closeForm" @saved="closeForm" />
 </template>

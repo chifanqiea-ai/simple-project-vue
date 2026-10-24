@@ -7,6 +7,11 @@ const props = defineProps<{
   article: Article
 }>()
 
+const emit = defineEmits<{
+  edit: []
+  remove: []
+}>()
+
 const { statusFilter, publish, draft } = useArticles()
 </script>
 
@@ -26,5 +31,10 @@ const { statusFilter, publish, draft } = useArticles()
     <p>当前筛选：{{ filterStatusMap[statusFilter] }}</p>
   </div>
   <RouterLink :to="'/article/' + props.article.id">文章详情页</RouterLink>
-  <ArticleAction @publish="publish(props.article.id)" @draft="draft(props.article.id)" />
+  <ArticleAction
+    @publish="publish(props.article.id)"
+    @draft="draft(props.article.id)"
+    @edit="emit('edit')"
+    @remove="emit('remove')"
+  />
 </template>
