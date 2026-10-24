@@ -3,6 +3,7 @@ import { ref } from 'vue'
 import type { Article, ArticleStatus, ArticlePayload } from '../types/Article'
 import { useArticleStore } from '../stores/article'
 import { statusMap } from '../types/Article'
+import { useToast } from '../utils/toast'
 
 // 传入 null = 新建模式；传入文章 = 编辑模式（预先填好当前值）
 const props = defineProps<{ article: Article | null }>()
@@ -12,6 +13,7 @@ const emit = defineEmits<{
 }>()
 
 const store = useArticleStore()
+const { showToast } = useToast()
 const isEdit = props.article !== null
 
 const title = ref(props.article?.title ?? '')
@@ -29,11 +31,11 @@ const saving = ref(false)
 async function save() {
   // 简单校验：标题必填；新建时作者姓名必填
   if (!title.value.trim()) {
-    alert('标题不能为空')
+    showToast('标题不能为空')
     return
   }
   if (!isEdit && !authorName.value.trim()) {
-    alert('作者姓名不能为空')
+    showToast('作者姓名不能为空')
     return
   }
 

@@ -15,6 +15,7 @@ import {
   requestUpdateArticle,
   requestDeleteArticle,
 } from '../api/article'
+import { useToast } from '../utils/toast'
 
 // 把各种异常统一取成给人看的话（业务错误/HTTP 错误/网络错误都会被拦截器包成 Error）
 function errMsg(e: unknown): string {
@@ -22,6 +23,8 @@ function errMsg(e: unknown): string {
 }
 
 export const useArticleStore = defineStore('article', () => {
+  // 气泡提示（公共喇叭）：成功失败都用它，替代会被浏览器静音的 alert
+  const { showToast } = useToast()
   // ===== state：相当于 Bean 的字段 =====
   const state = ref<RequestState<ArticleData>>({
     status: 'loading',
@@ -70,9 +73,9 @@ export const useArticleStore = defineStore('article', () => {
     try {
       await requestUpdateArticle(toPayload(article, 'published'))
       article.status = 'published'
-      alert('发布成功')
+      showToast('发布成功')
     } catch (e) {
-      alert('发布失败：' + errMsg(e))
+      showToast('发布失败：' + errMsg(e))
     }
   }
 
@@ -82,9 +85,9 @@ export const useArticleStore = defineStore('article', () => {
     try {
       await requestUpdateArticle(toPayload(article, 'draft'))
       article.status = 'draft'
-      alert('已保存草稿')
+      showToast('已保存草稿')
     } catch (e) {
-      alert('保存草稿失败：' + errMsg(e))
+      showToast('保存草稿失败：' + errMsg(e))
     }
   }
 
@@ -93,10 +96,10 @@ export const useArticleStore = defineStore('article', () => {
     try {
       await requestCreateArticle(payload)
       await loadArticles()
-      alert('新增成功')
+      showToast('新增成功')
       return true
     } catch (e) {
-      alert('新增失败：' + errMsg(e))
+      showToast('新增失败：' + errMsg(e))
       return false
     }
   }
@@ -106,10 +109,10 @@ export const useArticleStore = defineStore('article', () => {
     try {
       await requestUpdateArticle(payload)
       await loadArticles()
-      alert('修改成功')
+      showToast('修改成功')
       return true
     } catch (e) {
-      alert('修改失败：' + errMsg(e))
+      showToast('修改失败：' + errMsg(e))
       return false
     }
   }
@@ -118,9 +121,9 @@ export const useArticleStore = defineStore('article', () => {
     try {
       await requestDeleteArticle(id)
       await loadArticles()
-      alert('删除成功')
+      showToast('删除成功')
     } catch (e) {
-      alert('删除失败：' + errMsg(e))
+      showToast('删除失败：' + errMsg(e))
     }
   }
 
